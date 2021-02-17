@@ -2,37 +2,49 @@ import requests
 from bs4 import BeautifulSoup
 import os
 
-proxy = {"http": "socks5://127.0.0.1:9050",
-         "https": "socks5://127.0.0.1:9050"}
+proxies = {"http": "socks5://127.0.0.1:9050",
+          "https": "socks5://127.0.0.1:9050"}
 
-def download_file(url, nome, pasta):
-    r = requests.get(url, allow_redirects=True)
+def validacao(url, nome, pasta):
     try:
-        open(pasta+nome, 'wb').write(r.content)
+        if nome not in os.listdir(pasta):
+            print("Download ->", pasta+nome)
+            return True
     except:
         os.makedirs(pasta)
-        open(pasta+nome, 'wb').write(r.content)
+        print("Download ->", pasta+nome)
+        return True
+    print("Já existente ->", pasta+nome)
+    return False
+        
+def download_file(url, nome, pasta):
+    r = requests.get(url, allow_redirects=True)
+    open(pasta+nome, 'wb').write(r.content)
 
-def monta_lista(url, proxy=proxy):
-    r = requests.get(url, proxies=proxy)
+def monta_lista(url):
+    r = requests.get(url, proxies=proxies)
     html_doc = r.content
     soup = BeautifulSoup(html_doc, 'html.parser')
+    ## pode variar de acordo com o servidor ##
     lista = soup.find_all("a",href=True)
+    ##########################################
     return lista
 
 def main(url, pasta):
     lista = monta_lista(url)
-    for nome in lista[1:]:
-        nome = nome.get_text()
-        new_url = url+"/"+nome
-        if "." in nome:
-            download_file(new_url, nome, pasta)
-            print("Download ->", new_url)
+    for nome in lista:
+        #### pode variar de acordo com o servidor ####
+        href = str(nome).split("\"")[1].strip("#")
+        new_url = url+"/"+href
+        ##############################################
+        if "." in href:
+            if validacao(url, href, pasta):
+                download_file(new_url, href, pasta)
         else:
-            main(new_url, pasta+nome+"\\")            
+            main(new_url, pasta+href+"\\")            
             
-#url = "http://xxx.xxx.xxx.xxx/pasta"
 caminho = os.getcwd()
 pasta = caminho+"\\dados\\"
+#url = "http://xxx.xxx.xxx.xxx/pasta"
 url = input("Insira o endereço <- ")
 main(url, pasta)
